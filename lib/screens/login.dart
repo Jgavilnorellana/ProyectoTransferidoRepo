@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:proyectotransferido/screens/pedir_ubicacion.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -12,7 +13,6 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -78,25 +78,48 @@ class UserAndPass extends StatefulWidget {
 
 final auth = FirebaseAuth.instance;
 
-class _UserAndPassState extends State<UserAndPass> {
+class _UserAndPassState extends State<UserAndPass> with WidgetsBindingObserver {
 
   final TextEditingController correo = TextEditingController();
   final TextEditingController contrasenia = TextEditingController();
+  bool revisarPermisos = false;
+  bool dialogActivo = false;
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _requestLocationPermission();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    correo.dispose();
+    contrasenia.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed && revisarPermisos && !dialogActivo) {
+      revisarPermisos = false;
+      await _requestLocationPermission();
+    }
   }
 
   Future<void> _requestLocationPermission() async {
     final permiso = await Permission.location.request();
 
     if (permiso.isGranted) {
+      revisarPermisos = false;
+      dialogActivo = false;
       return;
 
     } else if (permiso.isDenied){
-      if (context.mounted) {
+      revisarPermisos = false;
+      if (!dialogActivo && context.mounted) {
+        setState(() => dialogActivo = true);
         showDialog(
           barrierDismissible: false,
           // ignore: use_build_context_synchronously
@@ -116,12 +139,16 @@ class _UserAndPassState extends State<UserAndPass> {
               ],
             );
           }
-        );
+        ).then((_) => setState(() => dialogActivo = false));
       }
     }
 
     if (permiso.isPermanentlyDenied) {
-      if (context.mounted) {
+      if (!dialogActivo && context.mounted) {
+        setState(() {
+          revisarPermisos = true;
+          dialogActivo= true;
+        });
         showDialog(
           barrierDismissible: false,
           // ignore: use_build_context_synchronously
@@ -142,7 +169,7 @@ class _UserAndPassState extends State<UserAndPass> {
               ],
             );
           }
-        );
+        ).then((_) => setState(() => dialogActivo = false));
       }
     }
   }
