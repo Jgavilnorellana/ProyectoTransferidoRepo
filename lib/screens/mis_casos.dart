@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart' as geo;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 //import 'package:proyecto_memoria/screens/detalles_casos.dart';
@@ -44,6 +45,19 @@ class _ListaCasosState extends State<ListaCasos> {
   FirebaseFirestore instancia = FirebaseFirestore.instance;
   User? user = FirebaseAuth.instance.currentUser;
 
+  Future<String> direccionConLatLong(double lat, double long) async {
+    try {
+      List<geo.Placemark> placemarks = await geo.placemarkFromCoordinates(lat, long);
+      if (placemarks.isNotEmpty) {
+        geo.Placemark placemark = placemarks.first;
+        return '${placemark.street ?? ''}, ${placemark.locality ?? ''}';
+      }  
+      return 'No se encontró la dirección';
+    } catch (e) {
+      return 'Error al obtener la dirección';
+    } 
+  } 
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -60,11 +74,12 @@ class _ListaCasosState extends State<ListaCasos> {
               stream: instancia
                   .collection('fotos')
                   .where('uidUser', isEqualTo: user!.uid)
+                  .orderBy('fecha', descending: true)
                   .snapshots(),
               builder: (BuildContext context,
                   AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (snapshot.hasError) {
-                  return const Text('El snapshot.haserror paso');
+                  return const Text('Ha habido un error cargando la lista de casos');
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const LinearProgressIndicator();
@@ -72,6 +87,10 @@ class _ListaCasosState extends State<ListaCasos> {
                 return Column(
                   children: snapshot.data!.docs.map((DocumentSnapshot document) {
                     Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+                    
+                    double latitud = data['latitud'];
+                    double longitud = data['longitud'];
+                    
                     return Column(
                       children: [
                         Row(
@@ -127,9 +146,22 @@ class _ListaCasosState extends State<ListaCasos> {
                                         ),
                                       ],
                                     ),
-                                    Text(
-                                      style: const TextStyle(fontSize: 15),
-                                      '${data['latitud']} , ${data['longitud']}'
+                                    FutureBuilder<String>(
+                                      future: direccionConLatLong(latitud, longitud),
+                                      builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return const Text('Obteniendo dirección...');
+                                        } else if (snapshot.hasError) {
+                                          return const Text('Error obteniendo la dirección');
+                                        } else {
+                                          return SizedBox(
+                                            width: MediaQuery.of(context).size.width * 0.6,
+                                            child: Text(
+                                            snapshot.data!,
+                                            ),
+                                        );
+                                        }
+                                      },
                                     ),
                                   ],
                                 ),

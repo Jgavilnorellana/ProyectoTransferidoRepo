@@ -58,16 +58,6 @@ Future<bool> _verificarToken(User user, BuildContext context) async {
     return false;
   }
 }
-
-    /* final uid = user.uid;
-    final docSnapshot = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-
-    //Verificar si el documento existe y si tiene tokens válidos
-    if (!docSnapshot.exists || docSnapshot.data()?['tokens'] == null || (docSnapshot.data()?['tokens'] as List).isEmpty) {
-      // Si el documento no existe o la lista de tokens está vacía, cerrar sesión
-      await FirebaseAuth.instance.signOut();
-      return false;
-    } */
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(

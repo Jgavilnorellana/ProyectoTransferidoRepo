@@ -91,26 +91,33 @@ class _DetallesCasoState extends State<DetallesCaso> {
                 ],
               ),
               const SizedBox(height: 20),
-              Text(
-                'Tipo de falla: ${widget.tipo}',
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800
-                ),  
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: Text(
+                  textAlign: TextAlign.center,
+                  widget.tipo,
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800
+                  ),  
+                ),
               ),
               const SizedBox(height: 10,),
               Container(
                 padding: const EdgeInsets.only(left: 30, right: 30, top: 20),
-                child:  Text(
-                  textAlign: TextAlign.justify,
-                  widget.descripcion,
-                  style: GoogleFonts.openSans(
-                    textStyle: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w400
-                    ),
-                  ) 
+                child:  SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.7,
+                  child: Text(
+                    textAlign: TextAlign.center,
+                    widget.descripcion,
+                    style: GoogleFonts.openSans(
+                      textStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w400
+                      ),
+                    ) 
+                  ),
                 )
               )
             ],

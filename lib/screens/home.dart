@@ -1,10 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster_2/flutter_map_marker_cluster.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
+// ignore: library_prefixes
+import 'package:permission_handler/permission_handler.dart' as permHand;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:proyectotransferido/presentaciones/drawer.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geocoding/geocoding.dart' as geo;
@@ -18,7 +23,7 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-class _HomeState extends State<Home> {
+class _HomeState extends State<Home> with WidgetsBindingObserver {
   final Location location = Location();
   final MapController mapController = MapController();
   List<String> marcadoresVisibles = [];
@@ -40,8 +45,15 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    revisionPermisos();
+    WidgetsBinding.instance.addObserver(this); // Agrega el observer
+    verificarPermisosAlIniciar();
     marcadoresVisibles = ['Bache', 'Desnivel', 'Grieta', 'Hundimiento', 'Zona no pavimentada', 'Deterioro del pavimento', 'Acumulación de agua', 'Obstrucción en la vía'];
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Remueve el observer
+    super.dispose();
   }
 
   void onFiltroChanged(List<String> nuevosMarcadoresVisibles) {
@@ -50,26 +62,31 @@ class _HomeState extends State<Home> {
     });
   }
 
-
-
-  Future<void> revisionPermisos() async {
-    location.changeSettings(accuracy: LocationAccuracy.high);
-    bool serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) {
-        // Manejar el caso en que el usuario no habilita la ubicación
-        return;
-      }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Cuando la app vuelve al primer plano, verifica los permisos
+      verificarPermisosAlIniciar();
     }
+  }
 
-    PermissionStatus permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) {
-        // Manejar el caso en que el usuario no otorga permisos
-        return;
-      }
+  Future<void> verificarPermisosAlIniciar() async {
+  // Usa `permission_handler` en lugar de `location` para verificar los permisos
+  permHand.PermissionStatus permissionGranted = await Permission.location.status;
+  
+  if (permissionGranted != permHand.PermissionStatus.granted) {
+    // Si los permisos no están concedidos, cerrar sesión y redirigir o cerrar la app
+    await cerrarSesionYRedirigir();
+  }
+}
+
+  Future<void> cerrarSesionYRedirigir() async {
+    // Cerrar sesión en Firebase
+    await FirebaseAuth.instance.signOut();
+    // Redirigir al login
+    if (context.mounted) {
+      // ignore: use_build_context_synchronously
+      SystemNavigator.pop();
     }
   }
 
@@ -609,8 +626,6 @@ class MarcadoresYElMapa extends StatelessWidget {
                                   width: 120,),
                                 Text(foto['tipo']),
                                 Text(DateFormat('dd-MM-yyyy h:mm a').format(foto['fecha'].toDate())),
-                                Text('latitud: $latitud'),
-                                Text('longitud: $longitud'),
                                 Text('Dirección: $direccion'),
                                 Text(foto['descripcion'], textAlign: TextAlign.center,),
                               ],
